@@ -4,7 +4,7 @@ import { connection } from './database/connection'
 export const routes = express.Router()
 
 routes.get('/items', async (request, response) => {
-  const items = await connection.select('*').from('items')
+  const items = await connection('*').from('items')
   const serializedItems = items.map((item) => {
     return {
       id: item.id,
@@ -19,7 +19,9 @@ routes.post('/points', async (request, response) => {
   const { name, email, whatsapp, latitude, longitude, city, uf, items } =
     request.body
 
-  const ids = await connection('points').insert({
+  const trx = await connection.transaction()
+
+  const insertedIds = await trx('points').insert({
     image: 'image-fake',
     name,
     email,
@@ -30,13 +32,14 @@ routes.post('/points', async (request, response) => {
     uf,
   })
 
+  const point_id = insertedIds[0]
   const pointItems = items.map((item_id: number) => {
     return {
       item_id,
-      point_id: ids[0],
+      point_id,
     }
   })
 
-  await connection('point_items').insert(pointItems)
-  return response.json({ sucess: true })
+  await trx('point_items').insert(pointItems)
+  return response.json({ success: true })
 })
